@@ -1,5 +1,4 @@
-from rq import Queue, Worker, Connection
-
+from rq import Queue, Connection, Worker
 
 if __name__ == '__main__':
     # Tell rq what Redis connection to use
