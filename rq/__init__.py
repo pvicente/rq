@@ -3,7 +3,7 @@ from .connections import use_connection, push_connection, pop_connection
 from .connections import Connection
 from .queue import Queue, get_failed_queue
 from .job import cancel_job, requeue_job
-from .worker import Worker
+from .worker import Worker, GeventWorker
 from .version import VERSION
 
 
