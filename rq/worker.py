@@ -15,7 +15,7 @@ try:
     from logbook import Logger
     Logger = Logger   # Does nothing except it shuts up pyflakes annoying error
 except ImportError:
-    from logging import Logger
+    from logging import getLogger as Logger
 from .queue import Queue, get_failed_queue
 from .connections import get_current_connection
 from .utils import make_colorizer
