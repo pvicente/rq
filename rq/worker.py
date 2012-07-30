@@ -52,7 +52,32 @@ def signal_name(signum):
 class Worker(object):
     redis_worker_namespace_prefix = 'rq:worker:'
     redis_workers_keys = 'rq:workers'
+    registered_workers = []
+    log = Logger('worker')
 
+    @classmethod
+    def pid(cls):
+        """The current process ID."""
+        return os.getpid()
+
+    @classmethod
+    def defautlWorkerName(cls):
+        """Return defaultName of worker composed by hostname.pid"""
+        hostname = socket.gethostname()
+        shortname, _, _ = hostname.partition('.')
+        return '%s.%s' % (shortname, cls.pid())
+
+    @classmethod
+    def registeredWorkers(cls):
+        return cls.registered_workers
+        
+    @classmethod
+    def lastRegisteredWorker(cls):
+        cls.log.debug("lastRegisteredWorker %s class id %s:%s" %(cls.registered_workers, id(cls), id(cls.registered_workers)))
+        if cls.registered_workers == []:
+            return None
+        return cls.registered_workers[-1]
+    
     @classmethod
     def all(cls, connection=None):
         """Returns an iterable of all Workers.
@@ -102,7 +127,6 @@ class Worker(object):
         self._is_horse = False
         self._horse_pid = 0
         self._stopped = False
-        self.log = Logger('worker')
         self.failed_queue = get_failed_queue(connection=self.connection)
 
 
@@ -132,20 +156,13 @@ class Worker(object):
         (short) host name and the current PID.
         """
         if self._name is None:
-            hostname = socket.gethostname()
-            shortname, _, _ = hostname.partition('.')
-            self._name = '%s.%s' % (shortname, self.pid)
+            self._name = self.defautlWorkerName()
         return self._name
 
     @property
     def key(self):
         """Returns the worker's Redis hash key."""
         return self.redis_worker_namespace_prefix + self.name
-
-    @property
-    def pid(self):
-        """The current process ID."""
-        return os.getpid()
 
     @property
     def horse_pid(self):
@@ -184,10 +201,12 @@ class Worker(object):
             p.hset(key, 'queues', queues)
             p.sadd(self.redis_workers_keys, key)
             p.execute()
+            self.registered_workers.append(key)
+            self.log.debug('Added worker %s to registered_workers %s on Worker class id %s:%s' %(key, self.registered_workers, id(self.__class__), id(self.registered_workers)))
 
     def register_death(self):
         """Registers its own death."""
-        self.log.debug('Registering death')
+        self.log.debug('Registering death worker %s' % (self.name))
         with self.connection.pipeline() as p:
             # We cannot use self.state = 'dead' here, because that would
             # rollback the pipeline
@@ -195,7 +214,12 @@ class Worker(object):
             p.hset(self.key, 'death', time.time())
             p.expire(self.key, 60)
             p.execute()
-
+            try:
+                self.registered_workers.remove(self.key)
+                self.log.debug('Removed worker %s from registered_workers %s on Worker class id %s:%s' %(self.key, self.registered_workers, id(self.__class__), id(self.registered_workers)))
+            except ValueError:
+                pass
+            
     def set_state(self, new_state):
         self._state = new_state
         self.connection.hset(self.key, 'state', new_state)
