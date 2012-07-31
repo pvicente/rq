@@ -431,7 +431,7 @@ class GeventWorker(Worker):
 
                 if result is None:
                     # Perform a context switch
-                    gevent.sleep(1)  # TODO: 1 second or 0?
+                    gevent.sleep(0.1)  # TODO: 1 second or 0?
                 elif self.stopped:
                     result = True
                     return
