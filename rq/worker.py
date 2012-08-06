@@ -202,7 +202,8 @@ class Worker(object):
             p.sadd(self.redis_workers_keys, key)
             p.execute()
             self.registered_workers.append(key)
-            self.log.debug('Added worker %s to registered_workers %s on Worker class id %s:%s' %(key, self.registered_workers, id(self.__class__), id(self.registered_workers)))
+            self.log.debug('Added worker %s to registered_workers %s with worker class id %s:%s listening on queues %s'
+                            %(key, self.registered_workers, hex(id(self.__class__)), hex(id(self.registered_workers)), queues))
 
     def register_death(self):
         """Registers its own death."""
