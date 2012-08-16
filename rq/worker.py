@@ -52,7 +52,7 @@ def signal_name(signum):
 class Worker(object):
     redis_worker_namespace_prefix = 'rq:worker:'
     redis_workers_keys = 'rq:workers'
-    registered_workers = []
+    _registered_workers = []
     log = Logger('worker')
 
     @classmethod
@@ -68,15 +68,19 @@ class Worker(object):
         return '%s.%s' % (shortname, cls.pid())
 
     @classmethod
-    def registeredWorkers(cls):
-        return cls.registered_workers
-        
+    def registerWorker(cls, worker):
+        cls._registered_workers.append(worker)
+    
     @classmethod
-    def lastRegisteredWorker(cls):
-        cls.log.debug("lastRegisteredWorker %s class id %s:%s" %(cls.registered_workers, id(cls), id(cls.registered_workers)))
-        if cls.registered_workers == []:
+    def unregisterWorker(cls, worker):
+        cls._registered_workers.remove(worker)
+    
+    @classmethod
+    def getLastRegisteredWorker(cls):
+        cls.log.debug("get Last Registered Worker %s class id %s:%s" %(cls._registered_workers, hex(id(cls)), hex(id(cls._registered_workers))))
+        if cls._registered_workers == []:
             return None
-        return cls.registered_workers[-1]
+        return cls._registered_workers[-1]
     
     @classmethod
     def all(cls, connection=None):
@@ -201,9 +205,9 @@ class Worker(object):
             p.hset(key, 'queues', queues)
             p.sadd(self.redis_workers_keys, key)
             p.execute()
-            self.registered_workers.append(key)
+            self.registerWorker(self)
             self.log.debug('Added worker %s to registered_workers %s with worker class id %s:%s listening on queues %s'
-                            %(key, self.registered_workers, hex(id(self.__class__)), hex(id(self.registered_workers)), queues))
+                            %(key, self._registered_workers, hex(id(self.__class__)), hex(id(self._registered_workers)), queues))
 
     def register_death(self):
         """Registers its own death."""
@@ -216,8 +220,8 @@ class Worker(object):
             p.expire(self.key, 60)
             p.execute()
             try:
-                self.registered_workers.remove(self.key)
-                self.log.debug('Removed worker %s from registered_workers %s on Worker class id %s:%s' %(self.key, self.registered_workers, id(self.__class__), id(self.registered_workers)))
+                self.unregisterWorker(self)
+                self.log.debug('Removed worker %s from registered_workers %s on Worker class id %s:%s' %(self.key, self._registered_workers, hex(id(self.__class__)), hex(id(self._registered_workers))))
             except ValueError:
                 pass
             
