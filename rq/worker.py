@@ -77,7 +77,6 @@ class Worker(object):
     
     @classmethod
     def getLastRegisteredWorker(cls):
-        cls.log.debug("get Last Registered Worker %s class id %s:%s" %(cls._registered_workers, hex(id(cls)), hex(id(cls._registered_workers))))
         if cls._registered_workers == []:
             return None
         return cls._registered_workers[-1]
